@@ -1,0 +1,579 @@
+/*
+ * pb1000.h
+ *
+ * Definitions for Casio PB-1000 System Memory Map Variables and Areas.
+ * Based on documented memory locations.
+ *
+ * Use these definitions to access system variables and memory areas
+ * from C code compiled for the PB-1000 (HD61700 CPU).
+ *
+ * Example Usage:
+ * unsigned char *lcd_buffer = (unsigned char *)LEDTP;
+ * unsigned char status = *((volatile unsigned char *)LCDST);
+ * if (status & LCDST_CURSOR_ON) { ... }
+ *
+ * *((volatile unsigned char *)OUTDV) = OUTDV_DISPLAY; // Set output to display
+ *
+ */
+
+#ifndef PB1000_H
+#define PB1000_H
+
+/* ========================================================================= */
+/* Screen Data Area                                                          */
+/* ========================================================================= */
+
+#define INTOP       0x6000  // Intermediate code buffer
+#define INTOP_SIZE  256
+
+#define EDTOP       0x6100  // Input buffer
+#define EDTOP_SIZE  257
+
+#define LEDTP       0x6201  // Display dot buffer (Main Screen Area)
+#define LEDTP_SIZE  1536
+
+#define LPFTP       0x6801  // 4th line of the display dot buffer
+#define LPFTP_SIZE  192
+
+#define CSRDT       0x68C1  // Cursor flash data buffer
+#define CSRDT_SIZE  6
+
+#define LCDST       0x68C7  // LCD state byte
+#define LCDST_SIZE  1
+// --- LCDST Bits ---
+#define LCDST_AT_KEY_PRINT  0b00000001 // Bit 0: At key input / PRINT
+#define LCDST_CURSOR_ENABLE 0b00000010 // Bit 1: Cursor display enable
+#define LCDST_VIRTUAL_SCREEN 0b00000100 // Bit 2: Virtual screen (1) / Actual screen (0)
+#define LCDST_RANGE_SET     0b00001000 // Bit 3: Cursor movement range setting in force
+#define LCDST_CURSOR_ON     0b00010000 // Bit 4: Cursor on (1) / off (0)
+#define LCDST_REVERSE_ON    0b00100000 // Bit 5: Reverse field display on
+
+#define EDCSR       0x68C8  // Cursor position (within logical line)
+#define EDCSR_SIZE  1
+
+#define SCTOP       0x68C9  // Actual screen top line number
+#define SCTOP_SIZE  1
+
+#define TOEDB       0x68CA  // Logical line top (start offset in EDTOP)
+#define TOEDB_SIZE  1
+
+#define BOEDB       0x68CB  // Logical line bottom (end offset in EDTOP)
+#define BOEDB_SIZE  1
+
+#define MOEDB       0x68CC  // Logical line top (at INPUT statement)
+#define MOEDB_SIZE  1
+
+#define TOARE       0x68CD  // Cursor movement range top
+#define TOARE_SIZE  1
+
+#define BOARE       0x68CE  // Cursor movement range bottom
+#define BOARE_SIZE  1
+
+#define EDCNT       0x68CF  // Location after last char in logical line / num shifted chars
+#define EDCNT_SIZE  1
+
+#define DSPMD       0x68D0  // Display Mode
+#define DSPMD_SIZE  1
+#define DSPMD_NORMAL    0x00 // Normal display
+#define DSPMD_PFKEY     0x01 // PF key display
+#define DSPMD_MENU      0x03 // MENU display
+
+#define SCROL       0x68D1  // Scroll mode
+#define SCROL_SIZE  1
+#define SCROL_4_LINE    0x80 // 4-line scroll (Using Hex as binary is long)
+#define SCROL_3_LINE    0x60 // 3-line scroll (Using Hex as binary is long)
+
+/* ========================================================================= */
+/* Keyboard Area                                                             */
+/* ========================================================================= */
+
+#define KYSTA       0x68D2  // Keyboard Status
+#define KYSTA_SIZE  1
+// --- KYSTA Bits ---
+// Bit 0: 0 (Unused?)
+#define KYSTA_BEEP_ENABLE   0b00000010 // Bit 1: Keyboard beep enabled
+#define KYSTA_REPEAT_ON     0b00000100 // Bit 2: Repeat on/off status
+#define KYSTA_REPEAT_ENABLE 0b00001000 // Bit 3: Repeat enable/disable
+#define KYSTA_CONTRAST_PRESET 0b00010000 // Bit 4: Contrast preset mode
+#define KYSTA_APO_DISABLE   0b00100000 // Bit 5: APO disable
+#define KYSTA_OFF_KEY       0b01000000 // Bit 6: OFF key pressed flag?
+#define KYSTA_AC_KEY        0b10000000 // Bit 7: AC key pressed flag?
+
+#define CHATA       0x68D3  // Time count while key chattering in progress
+#define CHATA_SIZE  1
+
+#define KEYCM       0x68D4  // KO (Key Out) scan code?
+#define KEYCM_SIZE  1
+
+#define KEYIN       0x68D5  // KI (Key In) read value? (16-bit)
+#define KEYIN_SIZE  2
+
+#define KEYMD       0x68D7  // Key Mode
+#define KEYMD_SIZE  1
+// --- KEYMD Bits ---
+#define KEYMD_ENG_JAP   0b00000001 // Bit 0: ENG (0) / JAP (1) mode
+#define KEYMD_CAPS      0b00001000 // Bit 3: CAPS lock on
+
+#define KYREP       0x68D8  // Key repeat count time
+#define KYREP_SIZE  1
+
+#define KYCNT       0x68D9  // Current number of characters in the keyboard buffer
+#define KYCNT_SIZE  1
+
+#define KYBUFRDPOS  0x68DA  // Last read position in the keyboard buffer (&H00..&H0F)
+#define KYBUFRDPOS_SIZE 1
+
+#define KYBUFWRPOS  0x68DB  // Last write position in the keyboard buffer (&H00..&H0F)
+#define KYBUFWRPOS_SIZE 1
+
+#define KYBUFSIZE   0x68DC  // Size of the keyboard buffer (fixed value &H10) - *This is likely the address holding the size*
+#define KYBUFSIZE_VAL 16    // Actual size value
+#define KYBUFSIZE_SIZE 1
+
+#define KYBUFADDR   0x68DD  // Address of the keyboard buffer (fixed value &H68DF) - *This is likely the address holding the pointer*
+#define KYBUFADDR_VAL 0x68DF // Actual buffer start address
+#define KYBUFADDR_SIZE 2
+
+#define KYBUF       0x68DF  // Circular keyboard buffer start address
+#define KYBUF_SIZE  16
+
+#define KANA1       0x68EF  // Kana related?
+#define KANA1_SIZE  2
+
+#define APCN        0x68F1  // APO (Auto Power Off) counter (-1 for TMINIT)
+#define APCN_SIZE   1
+
+/* ========================================================================= */
+/* Calculation Area                                                          */
+/* ========================================================================= */
+
+#define BNKNO       0x68F2  // Bank Number (Not used on PB-1000)
+#define BNKNO_SIZE  1
+
+#define ANGFL       0x68F3  // Angle mode
+#define ANGFL_SIZE  1
+#define ANGFL_DEG   0 // DEG mode
+#define ANGFL_RAD   1 // RAD mode
+#define ANGFL_GRAD  2 // GRAD mode
+
+#define WORK1       0x68F4  // General purpose calculation work buffer
+#define WORK1_SIZE  24
+
+#define OUTDV       0x690C  // Output Device selector
+#define OUTDV_SIZE  1
+#define OUTDV_DISPLAY 0x00 // Output to display
+#define OUTDV_PRINTER 0x02 // Output to printer
+#define OUTDV_FILE    0x04 // Output to file (via NOWFC)
+
+#define PTABC       0x690D  // Number of printer output characters count
+#define PTABC_SIZE  1
+
+#define NOWFC       0x690E  // Pointer to start address of current object's File Control Block (FCB)
+#define NOWFC_SIZE  2
+
+/* ========================================================================= */
+/* BASIC Variable Work Area                                                  */
+/* ========================================================================= */
+
+#define VAR1        0x6910  // Number of dimensions for an indexed variable
+#define VAR1_SIZE   1
+
+#define VAR2        0x6911  // Variable type flags
+#define VAR2_SIZE   1
+// --- VAR2 Bits ---
+#define VAR2_TYPE_NUMERIC 0b00001000 // Set if numerical variable
+#define VAR2_TYPE_STRING  0          // Cleared if string variable (based on bit 3)
+#define VAR2_INDEXED      0b10000000 // Set if indexed variable (array)
+
+#define VAR3        0x6912  // Variable name length
+#define VAR3_SIZE   1
+
+#define VAR4        0x6913  // Pointer to the variable name in symbol table
+#define VAR4_SIZE   2
+
+#define CONTA       0x6915  // Execution restart pointer for CONT command
+#define CONTA_SIZE  2
+
+#define DATPA       0x6917  // Pointer to current DATA statement for READ
+#define DATPA_SIZE  2
+
+// DRAW Statement Work Area (Coordinates)
+#define NBX1        0x6919  // DRAW statement work area X1
+#define NBX1_SIZE   1
+#define NBY1        0x691A  // DRAW statement work area Y1
+#define NBY1_SIZE   1
+#define NBX2        0x691B  // DRAW statement work area X2
+#define NBX2_SIZE   1
+#define NBY2        0x691C  // DRAW statement work area Y2
+#define NBY2_SIZE   1
+
+#define ERRFL       0x691D  // Directory address for ON ERROR enable file
+#define ERRFL_SIZE  2
+
+#define EJPDE       0x691F  // ON ERROR GOTO jump destination pointer (address of target line)
+#define EJPDE_SIZE  2
+
+#define ERRLN       0x6921  // Line number where error occurred
+#define ERRLN_SIZE  2
+
+#define ERRDE       0x6923  // Address of the statement causing the error
+#define ERRDE_SIZE  2
+
+#define ERRN        0x6925  // Error number
+#define ERRN_SIZE   1
+
+#define EJPFG       0x6926  // ON ERROR status flag (0=Normal, 1=Handling)
+#define EJPFG_SIZE  1
+
+#define TRAFG       0x6927  // Trace flag (0=TROFF, 1=TRON)
+#define TRAFG_SIZE  1
+
+#define INPER       0x6928  // Return address for INPUT error recovery
+#define INPER_SIZE  2
+
+#define MACCN       0x692A  // Not used
+#define MACCN_SIZE  1
+
+/* ========================================================================= */
+/* Memo Data Area (Not Used on PB-1000?)                                     */
+/* ========================================================================= */
+
+#define MEMO        0x692B  // Not used
+#define MEMO_SIZE   4
+
+/* ========================================================================= */
+/* Pointers to Main Memory Areas                                             */
+/* ========================================================================= */
+
+#define IOBF        0x692F  // Pointer to I/O buffer start (fixed value defined with CLEAR)
+#define IOBF_SIZE   2
+
+#define SSTOP       0x6931  // Start of the character operation stack (grows upwards)
+#define SSTOP_SIZE  2
+
+#define SBOT        0x6933  // End of the character operation stack
+#define SBOT_SIZE   2
+
+#define FORSK       0x6935  // Top of the FOR loop stack (grows downwards)
+#define FORSK_SIZE  2
+
+#define GOSSK       0x6937  // Top of the GOSUB stack (grows downwards)
+#define GOSSK_SIZE  2
+
+#define TONDT       0x6939  // Top of numeric variable storage area (grows downwards)
+#define TONDT_SIZE  2
+
+#define DTTB        0x693B  // Top of variable symbol table (grows downwards)
+#define DTTB_SIZE   2
+
+#define TOSDT       0x693D  // Top of string variable storage area? (fixed value defined with CLEAR)
+#define TOSDT_SIZE  2
+
+#define PDSTD       0x693F  // End of contents of string variables (grows upwards)
+#define PDSTD_SIZE  2
+
+#define HIMEM       0x6941  // Start of BASIC program file area (fixed value defined with CLEAR)
+#define HIMEM_SIZE  2
+
+#define BASEN       0x6943  // End of BASIC program file area / Start of data files (grows upwards)
+#define BASEN_SIZE  2
+
+#define MEMEN       0x6945  // End of data files area (grows upwards)
+#define MEMEN_SIZE  2
+
+#define DATDI       0x6947  // Top of data file directory (grows downwards)
+#define DATDI_SIZE  2
+
+#define BASDI       0x6949  // Top of BASIC file directory (grows downwards)
+#define BASDI_SIZE  2
+
+#define DIREN       0x694B  // End of the directory / Last byte of usable RAM (e.g., 0x7FFF for 8kB, 0xFFFF for 40kB)
+#define DIREN_SIZE  2
+
+/* ========================================================================= */
+/* Miscellaneous System Variables & Buffers                                  */
+/* ========================================================================= */
+
+#define ACJMP       0x694D  // Jump destination address for BREAK key press
+#define ACJMP_SIZE  2
+
+#define CHARA       0x694F  // Temp char storage?
+#define CHARA_SIZE  1
+
+#define ANSFG       0x6950  // Post calculation flag (1=After calculation, 0=Other)
+#define ANSFG_SIZE  1
+
+#define CSRCN       0x6951  // Cursor flash counter (-1 when ONINIT)
+#define CSRCN_SIZE  1
+
+#define USPBT       0x6952  // User stack area start address
+#define USPBT_SIZE  249
+#define USPTP       0x6A4B  // User stack area top (end address + 1, theoretically)
+
+#define SSPBT       0x6A4B  // System stack area start address
+#define SSPBT_SIZE  255
+#define SSPTP       0x6B4A  // System stack area top (end address + 1, theoretically)
+
+#define CGRAM       0x6B4A  // Character Generator RAM (&HF0-&HFF display dot pattern definition)
+#define CGRAM_SIZE  96
+
+#define ELVAD       0x6BAA  // Pointer to the contrast data/setting
+#define ELVAD_SIZE  2
+
+#define BEEPF       0x6BAC  // Key beep flag (0=ON, 1=OFF)
+#define BEEPF_SIZE  1
+
+#define DATE        0x6BAD  // DATE$ data storage (YYMMDD?)
+#define DATE_SIZE   3
+
+#define TIME        0x6BB0  // TIME$ data storage (HHMM?)
+#define TIME_SIZE   2
+
+#define STAT        0x6BB2  // STATistics data area
+#define STAT_SIZE   72
+
+#define OPTCD       0x6BFA  // Option code (related to peripherals?)
+#define OPTCD_SIZE  1
+
+#define IOSTS       0x6BFB  // I/O Status flags
+#define IOSTS_SIZE  1
+// --- IOSTS Bits ---
+#define IOSTS_SEND_OPEN     0b00000001 // Bit 0: Send open
+#define IOSTS_RECEIVE_OPEN  0b00000010 // Bit 1: Receive open
+
+#define RS1         0x6BFC  // RS232C Settings 1 (Baud, Parity, Data/Stop bits)
+#define RS1_SIZE    1
+// --- RS1 Bits ---
+#define RS1_MODE_MT         0b00000000 // Bit 0: MT mode
+#define RS1_MODE_RS232      0b00000001 // Bit 0: RS232C mode
+#define RS1_PARITY_ODD      0b00000000 // Bit 1: Odd parity
+#define RS1_PARITY_EVEN     0b00000010 // Bit 1: Even parity
+#define RS1_PARITY_OFF      0b00000000 // Bit 2: Parity OFF
+#define RS1_PARITY_ON       0b00000100 // Bit 2: Parity ON
+#define RS1_DATALEN_7       0b00000000 // Bit 3: 7 data bits
+#define RS1_DATALEN_8       0b00001000 // Bit 3: 8 data bits
+#define RS1_STOPBIT_1       0b00000000 // Bit 4: 1 stop bit
+#define RS1_STOPBIT_2       0b00010000 // Bit 4: 2 stop bits
+// Bits 5-7: Baud Rate (Values need setting directly, e.g., value = current_RS1 | (RS1_BAUD_9600 << 5))
+#define RS1_BAUD_9600       0 // 000 shifted left 5 = 0b00000000
+#define RS1_BAUD_4800       1 // 001 shifted left 5 = 0b00100000
+#define RS1_BAUD_2400       2 // 010 shifted left 5 = 0b01000000
+#define RS1_BAUD_1200       3 // 011 shifted left 5 = 0b01100000
+#define RS1_BAUD_600        4 // 100 shifted left 5 = 0b10000000
+#define RS1_BAUD_300        5 // 101 shifted left 5 = 0b10100000
+#define RS1_BAUD_150        6 // 110 shifted left 5 = 0b11000000
+#define RS1_BAUD_75         7 // 111 shifted left 5 = 0b11100000
+#define RS1_BAUD_MASK       0b11100000 // Mask for baud bits
+
+#define RS2         0x6BFD  // RS232C Settings 2 (Flow Control Status?)
+#define RS2_SIZE    1
+// --- RS2 Bits ---
+#define RS2_OUTPUT_XOFF     0b00000001 // Bit 0: Output while XOFF in progress
+#define RS2_INPUT_SO        0b00000010 // Bit 1: Input while SO in progress
+
+#define RS3         0x6BFE  // RS232C Settings 3 (Flow Control Enable/Status)
+#define RS3_SIZE    1
+// --- RS3 Bits ---
+#define RS3_CTRL_SI_SO      0b00000001 // Bit 0: SI/SO control enable
+#define RS3_CTRL_XON_XOFF   0b00000010 // Bit 1: XON/XOFF control enable
+#define RS3_CTRL_CTS        0b00000100 // Bit 2: CTS control enable
+#define RS3_CTRL_DSR        0b00001000 // Bit 3: DSR control enable
+#define RS3_CTRL_CD         0b00010000 // Bit 4: CD control enable
+#define RS3_STATUS_OUT_SO   0b00100000 // Bit 5: Output SO in progress
+#define RS3_STATUS_IN_XOFF  0b01000000 // Bit 6: Input XOFF in progress
+
+#define RS4         0x6BFF  // RS232C Status/Error Flags
+#define RS4_SIZE    1
+// --- RS4 Bits ---
+#define RS4_ERR_BUFFER_OVF  0b00000001 // Bit 0: Buffer overflow
+#define RS4_ERR_NOT_READY   0b00010000 // Bit 4: Not ready
+#define RS4_ERR_PARITY_OVR  0b01000000 // Bit 6: Parity/Overrun error
+#define RS4_ERR_FRAMING     0b10000000 // Bit 7: Framing error
+
+#define RSDEFAULT   0x6C00  // Default values for RS1, RS3 registers?
+#define RSDEFAULT_SIZE 2
+
+#define PRNFG       0x6C02  // Printer flags tested before/after char output
+#define PRNFG_SIZE  2
+// --- PRNFG Bits (likely mapped to lower byte) ---
+#define PRNFG_BUSY          0b00000001 // Bit 0: BUSY signal
+#define PRNFG_ERROR         0b00000010 // Bit 1: ERROR signal
+#define PRNFG_ACK           0b00000100 // Bit 2: ACK signal
+
+#define DSPFG       0x6C04  // Display flags (Full screen, visible lines)
+#define DSPFG_SIZE  1
+// --- DSPFG Bits ---
+// Bits 0-2: Last display line (0-3)
+// Bits 5-7: First display line (0-3)
+#define DSPFG_FULL_SCREEN   0x00 // Value for Full screen display?
+
+#define INTCK       0x6C05  // Interrupt Check Flags?
+#define INTCK_SIZE  1
+#define INTCK_DATA_RECEIVE  0x01 // Data received (RS232C/MT)
+
+#define RXCNT       0x6C06  // Start of RS232C/MT receive buffer structure
+#define RXCNT_COUNT_OFFSET 0    // Offset 0: number of received bytes (1 byte)
+#define RXCNT_INPTR_OFFSET 1    // Offset 1: input pointer (1 byte)
+#define RXCNT_BUFFER_OFFSET 2   // Offset 2: buffer data start
+#define RXCNT_BUFFER_SIZE  256  // Size of the data buffer itself
+#define RXCNT_TOTAL_SIZE   258  // Total size of structure
+
+#define ANSAD       0x6D08  // ANS (Last Answer) data buffer for CALC mode?
+#define ANSAD_SIZE  8
+
+#define ENGEXP      0x6D10  // Offset of the exponent in ENG mode (255 if none)
+#define ENGEXP_SIZE 1
+
+#define RND         0x6D11  // Random number generator seed/state
+#define RND_SIZE    9
+
+#define CALCBUF     0x6D1A  // CALC mode buffer
+#define CALCBUF_SIZE 258
+
+#define MTFL        0x6E1C  // MT (Microcassette Tape) work - file type
+#define MTFL_SIZE   1
+
+#define IOBFO       0x6E1D  // SAVE/LOAD File Control Block (FCB) buffer
+#define IOBFO_SIZE  35
+
+#define IOBUF       0x6E40  // SAVE/LOAD I/O data buffer
+#define IOBUF_SIZE  258
+
+#define IMAT        0x6F42  // Clock boot flag?
+#define IMAT_SIZE   5
+
+#define ONFIL0      0x6F47  // Clock boot file address pointer
+#define ONFIL0_SIZE 2
+
+#define ONFIL1      0x6F49  // Preset file address pointer 1
+#define ONFIL1_SIZE 2
+
+#define ONFIL2      0x6F4B  // Preset file address pointer 2
+#define ONFIL2_SIZE 2
+
+#define ONFIL3      0x6F4D  // Preset file address pointer 3
+#define ONFIL3_SIZE 2
+
+#define ONFIL4      0x6F4F  // Preset file address pointer 4
+#define ONFIL4_SIZE 2
+
+#define MODE        0x6F51  // Current operating MODE flags
+#define MODE_SIZE   1
+// --- MODE Bits ---
+#define MODE_BASIC      0b00000001 // Bit 0: BASIC mode
+#define MODE_EDIT       0b00000010 // Bit 1: EDIT mode
+#define MODE_MEMO       0b00000100 // Bit 2: MEMO mode
+#define MODE_INPUT      0b00001000 // Bit 3: INPUT mode
+#define MODE_CALC       0b00010000 // Bit 4: CALC mode
+#define MODE_SAVELOAD   0b00100000 // Bit 5: SAVE/LOAD mode
+#define MODE_MENU       0b01000000 // Bit 6: MENU mode
+#define MODE_ASSEMBLER  0b10000000 // Bit 7: ASSEMBLER mode
+
+#define SUBMENU     0x6F52  // Sub-menu selection state
+#define SUBMENU_SIZE 1
+// --- SUBMENU Bits 5,6 ---
+#define SUBMENU1 0 // 00: [basic ][data  ]...
+#define SUBMENU2 1 // 01: [name  ][kill  ]...
+#define SUBMENU3 2 // 10: [asmbl ][llist ]...
+
+#define BASICSTATE  0x6F53  // State within BASIC execution or MENU
+#define BASICSTATE_SIZE 1
+// --- BASIC States ---
+#define BASICSTATE_INTERACTIVE  0x00 // Interactive mode
+#define BASICSTATE_RUN          0x01 // RUN mode
+#define BASICSTATE_STOP         0x02 // STOP mode, CONT possible
+// --- MENU States ---
+#define BASICSTATE_MENU_MAIN    0x00 // Main menu
+#define BASICSTATE_MENU_LOAD    0x06 // Sub-menu "load"
+#define BASICSTATE_MENU_SAVE    0x08 // Sub-menu "save"
+#define BASICSTATE_MENU_DISK    0x0A // Sub-menu "disk"
+
+#define NOWFL       0x6F54  // Pointer to the directory entry of currently used file
+#define NOWFL_SIZE  2
+
+#define NOWLN       0x6F56  // Current BASIC execution line number
+#define NOWLN_SIZE  2
+
+#define EXEDE       0x6F58  // Work area pointer?
+#define EXEDE_SIZE  2
+
+#define FDDFL       0x6F5A  // Floppy disk directory entry buffer?
+#define FDDFL_SIZE  16
+
+#define LOADB       0x6F6A  // Work area pointer?
+#define LOADB_SIZE  2
+
+#define MTFL2       0x6F6C  // MT segment checksum
+#define MTFL2_SIZE  1
+
+#define MTFL3       0x6F6D  // MT Work
+#define MTFL3_SIZE  1
+
+#define MTFL5       0x6F6E  // MT Work
+#define MTFL5_SIZE  1
+
+#define MTFL6       0x6F6F  // MT Work
+#define MTFL6_SIZE  1
+
+#define MTFL7       0x6F70  // MT Work
+#define MTFL7_SIZE  2
+
+#define MTFL8       0x6F72  // MT Work
+#define MTFL8_SIZE  2
+
+#define BSYWK       0x6F74  // Work area
+#define BSYWK_SIZE  32
+
+#define MENUC       0x6F94  // Menu work area / File list index
+#define MENUC_SIZE  15
+#define MENUC_FILEIDX_OFFSET 0 // Offset 0: index of selected file (1 byte)
+#define MENUC_DIRPTRS_OFFSET 1 // Offset 1: pointers to dir entries (6 words = 12 bytes)
+
+#define INPST       0x6FA3  // Input work area?
+#define INPST_SIZE  12
+
+#define IOFCBHDRBUF 0x6FAF  // Buffer for an I/O control block header
+#define IOFCBHDRBUF_SIZE 35
+
+/* Note: The I/O File Control Block (FCB) structure described below is complex.
+ * Accessing it directly requires careful handling of pointers obtained likely
+ * from other system variables or ROM calls. Defining it as a C struct might
+ * be useful but goes beyond simple address #defines.
+ */
+/*
+ * // Example FCB Structure (Conceptual - Offsets relative to block start)
+ * struct FCB {
+ * unsigned short block_size;  // Offset 0x0000 (Value: 291)
+ * unsigned char  handle;      // Offset 0x0002 (0-15)
+ * unsigned char  access_mode; // Offset 0x0003 (0x30=OUT, 0x31=RAND, 0x32=IN, 0x34=APP)
+ * unsigned char  device_type; // Offset 0x0004 (0=RAM, 1=FDD, 2=COM, 3=TAPE)
+ * char           filename[11];// Offset 0x0005
+ * unsigned short data_buf_start; // Offset 0x0010
+ * unsigned short data_buf_end;   // Offset 0x0012
+ * unsigned char  data_buf_count; // Offset 0x0014
+ * unsigned char  mem_overflow;   // Offset 0x0015
+ * unsigned char  eof_flag;       // Offset 0x0016 (0=Not EOF, 0xFF=EOF)
+ * unsigned short data_buf_ptr;   // Offset 0x0017
+ * unsigned char  unknown_19;     // Offset 0x0019
+ * unsigned short record_num;     // Offset 0x001A
+ * unsigned char  file_type;      // Offset 0x001C
+ * unsigned short ram_start_addr; // Offset 0x001D
+ * unsigned short ram_end_addr;   // Offset 0x001F
+ * unsigned short ram_ptr;        // Offset 0x0021
+ * unsigned char  data_buffer[256]; // Offset 0x0023
+ * }; // Total Size = 2+1+1+1+11+2+2+1+1+1+2+1+2+1+2+2+2+256 = 291 bytes
+ */
+
+
+/* ========================================================================= */
+/* Standard Output Terminators for print() function                          */
+/* ========================================================================= */
+enum Terminator { // Single ASCII handled by OUTAC at &h95D7
+	SPACE = 32,  //ASCII Space
+    TAB = 9,     // ASCII Horizontal Tab
+    LF  = 10,    // ASCII Line Feed
+    CR  = 13,     // ASCII Carriage Return
+	CRLF = 23    // Note: CRLF is handled by OUTCR at &h95CE
+};
+
+#endif /* PB1000_H */

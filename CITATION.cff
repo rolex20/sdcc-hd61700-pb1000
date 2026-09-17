@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata in this file."
+title: "PBCC: PB-1000 / HD61700 C Cross Compiler"
+type: software
+authors:
+  - given-names: "rolex20"
+    family-names: "rolex20"
+license: Apache-2.0
+repository-code: "https://github.com/rolex20/PB1000-c-compiler/"
+abstract: >
+  A cross-compiler project targeting the Casio PB-1000 (HD61700 CPU), focused on generating
+  PB-1000-compatible assembly and validated against hardware/assembler constraints.
+keywords:
+  - compiler
+  - cross-compiler
+  - HD61700
+  - PB-1000
+  - retrocomputing
+  - C

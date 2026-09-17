@@ -1,0 +1,15 @@
+PB-1000 / HD61700 C Cross Compiler (PBCC)
+Copyright (c) 2026 rolex20
+
+This product is distributed under the Apache License, Version 2.0.
+
+Attribution / Notice
+--------------------
+If you redistribute this project or derivative works, you must retain this NOTICE file
+and the LICENSE file, in accordance with the Apache-2.0 license terms.
+
+Project documentation and validation notes are included in this repository as primary
+design references for the compiler and are part of the distributed work.
+
+No third-party code is included at this time (documentation references may cite external
+materials; those materials are not redistributed here).
