@@ -14,7 +14,7 @@ This document summarizes the critical lessons learned during the extensive empir
     *   **`EQU` Labels:** Also require a colon (e.g., `ROMFUNC: EQU &H9664`).
     *   **Operand Usage:** Labels are **ONLY** valid as operands for `JP`, `JR`, and `CAL`. **Cannot** be used as immediate numeric values or address substitutes in `LD`, `ST`, `LDW`, `STW`, `AD`, `SB`, `AN`, `PRE`, `EQU` RHS, etc.
 2.  **Literals:**
-    *   **Valid:** Decimal (e.g., `10`), Hexadecimal (`&HFF`, `&h0a`). Case-insensitive prefix.
+    *   **Valid:** Decimal (e.g., `10`), Hexadecimal (`&HFF`, `&H0a`). Case-insensitive prefix.
     *   **Invalid:** Binary literals (`&B...`) are **not supported**.
 3.  **Instruction Set & Addressing Modes:**
     *   Use **only** instructions and addressing modes explicitly listed as valid formats in **Table 5.2 ("Full Instruction Formats and Byte Sizes")** of the `HD61700 PB-1000 Assembly Guide.md`. Do not infer modes.

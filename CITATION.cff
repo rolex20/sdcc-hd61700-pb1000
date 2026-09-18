@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata in this file."
-title: "PB-1000 / HD61700 C Cross Compiler"
+title: "C Cross Compiler for the  HD61700/PB-1000"
 type: software
 authors:
   - given-names: "rolex20"
@@ -8,8 +8,7 @@ authors:
 license: Apache-2.0
 repository-code: "https://github.com/rolex20/sdcc-hd61700-pb1000"
 abstract: >
-  A cross-compiler project targeting the Casio PB-1000 (HD61700 CPU), focused on generating
-  PB-1000-compatible assembly and validated against the internal hardware/assembler constraints of the PB-1000.
+  SDCC backend targeting the HD61700/PB-1000
 keywords:
   - compiler
   - cross-compiler

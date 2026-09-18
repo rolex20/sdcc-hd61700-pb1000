@@ -2,12 +2,100 @@
 
 # 1. Introduction
 
-This guide details the necessary technical information to guide the development of a C cross compiler for the Casio PB-1000. The compiler's goal is to compile a C language program into HD61700 assembly instructions in a text file. This generated assembly instructions must be syntactically correct and functionally compatible with the assembler built into the Casio PB-1000 handheld computer.
+This guide details the necessary technical information to guide the development of a C cross compiler for the Casio PB-1000. The compiler's goal is to compile a C language program into valid HD61700 assembly instructions in a text file (final PB-1000 textual linked-output format). These final generated assembly instructions must be syntactically correct and functionally compatible with the assembler built into the Casio PB-1000 handheld computer.  Before this final file, the compiler can and should use all it's recommended internal representations/workflows.
+
+The original manuals from the CASIO PB-1000 are available only in physical paperback format.  There are only some bad quality PDF scanned and there is a concern that uploading those documents might exhaust the token context size of the AI model in charge of developing the actual C Cross compiler while trying to OCR those scanned PDF files.
+
+**Constraint:** Features specific only to the existing tool called "HD61 PC-based cross-assembler" (like enhanced directives, expression evaluation, longer labels, undocumented instructions/modes, and any other feature tagged as undocumented) must be avoided by the C cross compiler.
+
+## PB-1000 Internals
+
+The file 'spec\Book in German - Casio PB-1000 Internals.txt' contains a book in German about Internals of the PB-1000.
+
+The document provides essential low-level architectural details for targeting the PB-1000's Hitachi HD61700 CPU, including undocumented instructions, system stack conventions, complete memory maps, and a detailed breakdown of the internal/external binary-coded decimal (BCD) floating-point format alongside built-in ROM entry points.
+
+**Key Information included in the german book for a Compiler**
+
+* **CPU Target & Undocumented Opcodes:** Details the Hitachi HD61700 architecture, including undocumented instructions (`LDD`, `STD`, multi-byte operations up to 8 bytes, and shortened register modes using `$0`, `$30`, `$31`) needed if your compiler emits raw machine code.
 
 
-The original manuals from the CASIO PB-1000 are available only in physical paperback format.  There are only some bad quality PDF scanned and there is a concern that uploading those documents might exhaust the token context size of the AI model in charge of developing the actual C Cross compiler.
+* **System Memory Layout:** Provides a full map of system RAM (`&h6000–&h6FFF`), including File Headers (32 bytes), File Control Blocks (FCB), keyboard/display buffers, and runtime variable storage areas.
 
-**Constraint:** Features specific only to the "HD61 PC-based cross-assembler" (like enhanced directives, expression evaluation, longer labels, undocumented instructions/modes, and any other feature tagged as undocumented) must be avoided by the C cross compiler.
+
+* **Stack & Call Conventions:** Outlines how custom machine code routines interact with the system when invoked via BASIC `CALL` statements, including retrieving arguments via text pointer `IX`, stack cleanup, and preserving critical registers (`$30` and `$31`) to prevent system crashes.
+
+
+* **ROM Utility Calls:** Lists fixed vectors to leverage built-in routines, such as skipping text delimiters (`&h013A`) or evaluating BASIC expressions (`&h9BE5`), saving you from re-implementing runtime helpers.
+
+
+**Floating-Point (FLP) Format & Operations**
+
+The book explicitly documents the floating-point formats and floating-point math routines implemented in the ROM.
+
+* **Internal Format (9 Bytes):** Stored in main registers `$0` through `$8` (designated as `NUM0`) or `$10` through `$18` (`NUM1`):
+
+
+* *Layout:* `ln jk hi fg de bc 0a xy 0v`
+
+* *Mantisse:* $a.bcdefghijklm$ stored as BCD digits.
+
+
+* *Exponent:* Base-10 exponent stored in $xy$.
+
+
+* *Signs:* Byte $0v$ encodes signs for both the mantissa ($v = +5$ if negative) and exponent ($v = +1$ if positive).
+
+
+* *Formula:* $vm \cdot a.bcdefghijklm \cdot 10^{(ve \cdot xy)}$.
+
+
+* **External Format (7 Bytes):** A compressed layout (`ik hi fg de bc ya vx`) used for stored variables where the trailing mantissa digits $lm$ are truncated to $00$.
+
+
+* **Built-in FLP Math Routines:** Instead of writing your own float library, your compiler can emit calls directly to the processor ROM, for example:
+
+* `&h084A`: Addition ($NUM1 = NUM1 + NUM0$)
+
+
+* `&h083E`: Subtraction ($NUM1 = NUM0 - NUM1$)
+
+
+* `&h0877`: Multiplication ($NUM1 = NUM1 \cdot NUM0$)
+
+
+* `&h08B6`: Division ($NUM1 = NUM1 / NUM0$)
+
+
+* `&h08DD` / `&h0A55` / `&h0AC2`: Hardware-assisted `SQR`, `LOG`, and `SIN` functions
+
+### Final remarks about the German Book
+
+You can trust the German Book, even when some of the specialized information in the book is **empirical**, grounded in community validated reverse engineering, hardware probing, and ROM disassembly, though built upon an **authoritative** baseline of official hardware specifications.
+
+**Empirical Elements**
+
+* **Undocumented Opcodes:** Instructions like `LDD`, `STD`, multi-byte operations up to 8 bytes, and shortened register modes (`$0`, `$30`, `$31`) were not published in Hitachi's official HD61700 datasheets; they were discovered through experimental execution and opcode scanning.
+
+
+* **ROM Entry Vectors:** Internal address calls (e.g., `&h084A` for floating-point addition or `&h013A` for skipping text delimiters) were never documented by Casio as a public developer API, but were mapped by disassembling the PB-1000 system ROM.
+
+
+* **Memory Layout & BCD Formats:** The specific layout of internal work RAM (`&h6000–&h6FFF`) and the precise bit-level packing of 9-byte internal / 7-byte external BCD floating-point values reflect empirical observation of how the runtime handles variables.
+
+
+
+**Authoritative Elements**
+
+* **Base Architecture:** The fundamental HD61700 instruction set, primary registers, and standard execution mechanisms originate from official Hitachi datasheets.
+
+
+* **System Interfacing:** The standard BASIC `CALL` conventions and official file system structures align with published Casio user and system documentation.
+
+
+
+For cross-compiler development, treat the undocumented opcodes and ROM entry points as empirically verified low-level behaviors. While highly reliable for the PB-1000's specific ROM revision, they represent reverse-engineered runtime shortcuts rather than vendor-guaranteed stable APIs.
+
+
 
 # 2. Target Environment: Casio PB-1000
 
@@ -30,7 +118,7 @@ The original manuals from the CASIO PB-1000 are available only in physical paper
 	*   System stack: 255 bytes starts at `&H6A4B`.
 	*   User stack: 249 bytes starts at `&H6952`.
 *   Built-in clock function.
-*   Built-in screen: LCD 32 columns by 4 line (192 x 32 dots).  Be **very** **concise** with text messages on the screen.
+*   Built-in screen: LCD 32 columns by 4 line (192 x 32 dots).  Be **very** **concise** with text messages on the PB-1000 screen.
 
 
 # 3. HD61700 CPU Architecture (Relevant for Compiler)
@@ -81,8 +169,8 @@ GFL $4      ; copy F
 *   **System Constant Registers:** The PB-1000 system maintains specific registers as constants required by ROM routines:
     *   **`$30`**: Holds the decimal value **1**.
     *   **`$31`**: Holds the decimal value **0**.
-    System calls made via `CAL` **expect** these registers to hold these values. User programs *can* modify `$30` and `$31`, but doing so will cause subsequent system `CAL` calls to malfunction unless the correct values are restored beforehand.  If your user program never modify $30 or $31 then you can safetly use them for their respective constant values and you don't need to restore their values before ROM calls.
-*   **Using `$30`/`$31` in User Code:** User code *can* read `$30` and `$31` to obtain the constants `1` and `0`.  Simply avoid changing `$30` or `$31`.
+    System calls made via `CAL` **expect** these registers to hold these values. User programs *can* modify `$30` and `$31`, but doing so will cause subsequent system `CAL` calls to malfunction unless the correct values are restored beforehand.  If your code never modify $30 or $31 then you can safetly use them for their respective constant values and you don't need to restore their values before ROM calls.
+*   **Using `$30`/`$31` in User Code:** User code *can* read `$30` and `$31` to obtain the constants `1` and `0`.  Simply avoid changing `$30` or `$31`.  If you need to use those registers with other values, simply restore their corresponding constant values before using them as a constant. 
 
 *   **ROM Calls (`CAL`):**
     *   If your code modifies `$30` or `$31`, you **must** save their original values (e.g., using `PHU`/`PHS`) before the modification, and restore the correct system values (`1` and `0`) before executing any `CAL` instruction.
@@ -102,7 +190,7 @@ GFL $4      ; copy F
 *   **Essential Pseudo-instructions:**
     *   `LABEL: EQU value`: Assigns a numeric `value` (must be pre-calculable) to `LABEL`. `LABEL` must end with a colon.
     *   `ORG address`: Specifies the object program start address.  Multiple ocurrences may be present in a single program, but a newly specified address must be larger than the address specified by the ORG command immediately preceding.  Typically `ORG &H7000`. `address` must be a 16-bit value.
-    *   `START address`: Specifies the execution entry point for the program loader. `address` must be a 16-bit value. Can only appear once.  Normally the address specified by this command is the same as that specified by the ORG command.  START is not explicitely required but it is a good practice to use it.
+    *   `START address`: Specifies the execution entry point for the program loader. `address` must be a 16-bit value. Can only appear once.  Normally the address specified by this command is the same as that specified by the ORG command.  START is not explicitely required but it is a good practice to use it.  With care you can use a label (see addendum below).
     *   `[LABEL:] DB byte1, byte2, "string", ...`: Define byte data. Stores 8-bit values consecutively. String literals are expanded into their ASCII byte values.  Character literals (`A`) are only supported in `DB` directives; character literals (`A`) are not valid as instruction operands.  DB string escape sequences are not supported (no escape interpretation, the assembler treats everything between quotes literally.
     *   `[LABEL:] DS size`: Define Storage. Reserves `size` bytes of memory. The PB-1000 assembler *does not* initialize this memory (contents are undefined). The compiler must explicitly store initial values if required (e.g., for zero-initialized variables).
 *	 The built-in assembler maximum line size is: 255 characters.  The file size of the source assembly program to be assembled by the built-in assembler in the PB-1000 is only limited by the free available RAM in the PB-1000.
@@ -762,7 +850,7 @@ This section serves as a crucial supplement to the general HD61700 assembly lang
 
 *   **Supported Directives:** Only the following directives are supported:
     *   `ORG address`: Set origin (must be a literal numeric address).
-    *   `START address`: Define entry point (must be a literal numeric address).
+    *   `START address`: Define entry point (must be a literal numeric address or valid label).
     *   `LABEL: EQU value`: Assign a literal numeric value to a label.
     *   `[LABEL:] DB byte1, byte2, "string", ...`: Define byte data.  
     *   `[LABEL:] DS size`: Define storage (reserves `size` bytes).
@@ -774,7 +862,7 @@ This section serves as a crucial supplement to the general HD61700 assembly lang
 Given the restrictions on label usage in instructions and expression evaluation, accessing global variables or data requires careful handling:
 
 1.  **Define Data After `ORG` and `START`:** Place all global data definitions (`DS`, `DB`) immediately after the `ORG` and `START` directive at the beginning of your program space (typically `ORG &H7000`).
-2.  **Calculate Absolute Addresses:** Manually calculate the exact 16-bit absolute address of each data variable based on the `ORG` address and the sizes of preceding data definitions.
+2.  **Calculate Absolute Addresses:** Calculate the exact 16-bit absolute address of each global data variable based on the `ORG` address and the sizes of preceding data definitions.
 3.  **Document Addresses (Optional but Recommended):** Use `EQU` to assign the calculated *numeric* address to a label for readability in comments or documentation *only*. Do **not** use this `EQU` label directly in `LDW`/`PRE`.
     *   `ORG &H7000`
 	*    START MAIN
@@ -837,9 +925,9 @@ L llll: aaaa ERR e
 | :-------- | :------------------------------------------------------------------- |
 | OM error  | Address set outside of the valid machine language area (e.g., during `BLOAD, R` or via invalid pointer usage). |
 
-# Addendum: Defining Global Data with Fixed Addresses on the PB-1000
+# Addendum: Defining Global Data/Variables with Fixed Addresses on the PB-1000
 
-Below is a revised addendum that reflects the PB-1000’s requirement that the **START** directive appear immediately after the **ORG** directive. This section explains how to define global data at fixed addresses so that—for example—the first global variable (your string) occupies address &H7000, while still satisfying the assembler’s syntax rules for code entry.
+Below is a revised addendum that reflects the PB-1000’s requirement that the **START** directive appear immediately after the **ORG** directive and how to use a label with START instead of a numeric address. This section explains how to define global data at fixed addresses so that—for example—the first global variable (your string) occupies address &H7000, while still satisfying the assembler’s syntax rules for code entry.
 
 Because the PB-1000 built-in assembler mandates that the **START** instruction come immediately after the **ORG** directive, many experienced programmers use a layout that “pins” global data at fixed addresses by placing them right after the **START** directive. This technique permits you to know exactly where each global variable or string is located (e.g., knowing that a string is at &H7000) and avoids the need to calculate extra padding manually.
 
@@ -872,17 +960,15 @@ A compiler can easily keep track of all the global variables and their respectiv
 ## 2. Using Fixed Global Addresses
 
 - **Literal Operands Only:**  
-  The PB-1000 assembler does not allow you to use labels (like `HELO`) as immediate operands in instructions. This means that even though you document that `HELO` is at, for example, &H7010, you must use that literal value when loading its address:
+  The built-in PB-1000 assembler does not allow you to use labels (like `HELO`) as immediate operands in instructions. This means that even though you document that `HELO` is at, for example, &H7010, you must use that literal value when loading its address:
 ```assembly
   LDW   $15, &H7010    ; Load pointer to "Hello World" string at known address
 ```
-- **Document Everything:**  
-  Because the assembler won’t calculate addresses for you, it is crucial to annotate your source file. List the starting address of each global variable (as you expect it to reside) in comments. This reduces errors when your code refers to these locations.
 
 ## 3. Maintenance Guidelines
 
 - **Stability in a Fixed Layout:**  
-  This technique is widely used and stable for PB-1000 assembly programming. Every time you modify a global’s size or insert new globals, you must update your documented addresses and any hard-coded references accordingly.
+  This technique is widely used and stable for PB-1000 assembly programming. Every time you modify a global’s size or insert new globals, you must update your documented addresses and any hard-coded references accordingly.  This is not a problem, in the final stage of a compiler, it should know all final addresses.
 - **Preventing Accidental Execution:**  
   By placing the **START** directive immediately after `ORG`, you ensure that the processor begins execution at your intended entry point rather than in the data area. Do not insert code or data in between these directives if you want to guarantee proper startup.
 
@@ -1006,7 +1092,7 @@ The goal is to provide the necessary information for an AI model, proficient in 
 
 **2. Calling ROM Routines**
 
-*   **Mechanism:** ROM routines are invoked using the `CAL address` instruction, where `address` is the 16-bit entry point of the routine (e.g., `CAL &H95D7`).
+*   **Mechanism:** ROM routines are invoked using the `CAL address` instruction, where `address` is the 16-bit entry point of the routine (e.g., `CAL &H95D7`) or it can be EQU defined.
 *   **System Stack (SS):** When `CAL` is executed, the CPU pushes the address of the instruction *following* the `CAL` onto the System Stack (`SS`). A standard `RTN` instruction at the end of the ROM routine will pop this address and return execution flow correctly.
 *   **BASIC Interpreter Context:** The German book notes that when called from BASIC (`CALL` or `BLOAD,R`), the stack also contains a "text pointer" used by the interpreter. For standalone machine code generated by the cross-compiler (presumably started via `BLOAD,R` or a custom loader), directly manipulating this text pointer is likely unnecessary and risky. The primary concern is ensuring the `SS` is balanced upon return.
 *   **Argument Passing & Return Values:** Arguments and return values are typically passed via main registers ($0-$31). The specific registers used are documented below for each selected routine. It is *crucial* that the caller sets up input registers correctly before the `CAL` and retrieves results from the specified output registers after the `RTN`.
@@ -1136,15 +1222,15 @@ While direct manipulation is usually avoided, awareness of these helps prevent c
 **4.4. Memory Utilities**
 
 * **Label:** `CLRME` (From German Book)
-* **Address:** `&h016E`
-* **Description:** Clears a block of memory by filling it with zeros (`&h00`). Analysis of the ROM code confirms this behavior. It starts by zeroing registers `$6` through `$13` and then uses `stim` and `sti` instructions to write these zeros into the specified memory range.
+* **Address:** `&H016E`
+* **Description:** Clears a block of memory by filling it with zeros (`&H00`). Analysis of the ROM code confirms this behavior. It starts by zeroing registers `$6` through `$13` and then uses `stim` and `sti` instructions to write these zeros into the specified memory range.
 * **Input:**
     * `$2/3`: Start address of the memory block to clear.
     * `$4/5`: Length (16-bit) of the memory block to clear.
 * **Output:**
     * Memory block from Start Address to Start Address + Length - 1 is filled with zeros.
     * `IX`: Contains End Address + 1 upon completion.
-    * `$6-$13`: Contain `&h00`.
+    * `$6-$13`: Contain `&H00`.
 * **Altered Registers:**
     * `$4`, `$5` (Input length is consumed).
     * `$6` through `$13` (Used internally, end containing zero).
@@ -1176,6 +1262,8 @@ While direct manipulation is usually avoided, awareness of these helps prevent c
 ---
 
 **4.6 Useful Inline Assembler Routines**
+
+You can modify them to use other registers if benefitial in your assembler program or in a Compiler.
 
 ```assembly
 ;*************************************
@@ -1281,21 +1369,21 @@ The ROM Error routine expects $18 with the error code, then simply CAL the addre
 
 **5. Additional Recommendations**
 
-1.  **Routine Selection:** Prioritize the most fundamental routines: `OUTAC`, `OUTCR`, `PRLB1`, `CLS` for output; `CRTKY` for input; `KBM16` for multiplication; `BNBCD`, `WRDBCD`, `NISIN` for number conversions. `CLRME` and `BLKCPY` are useful utilities. Approach string functions like `STR$`, `CHR$`, `HEX$` with caution regarding their calling conventions from machine code.
-2.  **Register Management:** Be meticulous about saving/restoring live registers around ROM system `CAL` calls according to the altered registers.
+1.  **Routine Selection:** Fundamental routines, in many cases too slow: `OUTAC`, `OUTCR`, `PRLB1`, `CLS` for output; `CRTKY` for input; `KBM16` for multiplication; `BNBCD`, `WRDBCD`, `NISIN` for number conversions. `CLRME` and `BLKCPY` are useful utilities. Approach string functions like `STR$`, `CHR$`, `HEX$` with caution regarding their calling conventions from machine code.
+2.  **Register Management:** Remember you might need to save/restore live registers around ROM system `CAL` calls according to the altered registers.
 3.  **Output Device:** You can assume that `OUTDV` (&H690C) is already set to 0 (Display) before calling display output routines.
 4.  **Error Handling:** The ROM routines may generate BASIC error codes on invalid input. The compiler needs a strategy to handle this, potentially by returning an error code to the C program or terminating execution via a dedicated error handler. The German book mentions errors like SN (Syntax), TM (Type Mismatch), OV (Overflow), BS (Bad Subscript), FC (False Command), OM (Out of Memory), etc.
-5.  **Implementation vs. Call:** For simple routines like `BNBCD` where the code is provided, the compiler *could* inline the assembly directly. However, calling the ROM routine (`CAL &HD03A`) is generally safer and saves code space. For complex routines like multiplication (`KBM16`), calling is strongly preferred over reimplementation unless a new routine is needed for signed or unsigned values.
+5.  **Implementation vs. Call:** For simple routines like `BNBCD` where the code is provided, the compiler *could* inline the assembly directly. However, calling the ROM routine (`CAL &HD03A`) is generally safer and saves code space. For complex routines like multiplication (`KBM16`), calling is strongly preferred over reimplementation unless a new routine is needed for signed or unsigned values. The final decision will depend on the final architecture selected for the C Compiler.
 
 # Addendum: Sample Implementation of the Stack Frame for Function Calls on the PB-1000
 
-Below is an addendum to the original documentation that explains one sample implementation of a function call stack frame on the PB-1000.  The example implementation provided in this example is meant for illustration only. 
+Below is an addendum to the original documentation that explains one sample of a possible implementation of a function call stack frame on the PB-1000.  The example implementation provided in this example is meant for illustration only. 
 
 In a modern production compiler, both Caller-Saved and Callee-Saved Registers strategies are mixed for efficiency, which means some registers are caller-saved, while others are callee-saved, depending on the convention (e.g., System V AMD64, Microsoft x64) where certain registers are caller-saved (volatile) and others are callee-saved (non-volatile).
 
 For a modern and professional example, in the Microsoft x64 ABI, function parameters are primarily passed in registers, but when there are more than four integer parameters, the additional ones are passed on the stack.  Additionally, the caller must allocate space on the stack for the first four register parameters (even though they are passed in registers). This is called shadow space, ensuring the callee can spill register values if needed.
 
-In a production C compiler for the HD61700, it has been verified that the same approach would be optimal: both Caller-Saved and Callee-Saved Registers strategies should be mixed for efficiency, which means some registers are caller-saved, while others are callee-saved.  Function parameters are primarily passed in registers, but when there are more than four integer parameters, the additional ones are passed on the stack.  Additionally, the caller must allocate space on the stack for the first four register parameters (even though they are passed in registers). This is called shadow space, ensuring the callee can spill register values if needed.  Return values can be in $0/1.
+In a production C compiler for the HD61700, it has been empirically verified that the same approach could be a good idea: both Caller-Saved and Callee-Saved Registers strategies should be mixed for efficiency, which means some registers are caller-saved, while others are callee-saved.  Function parameters are primarily passed in registers, but when there are more than four integer parameters, the additional ones are passed on the stack.  Additionally, the caller must allocate space on the stack for the first four register parameters (even though they are passed in registers). This is called shadow space, ensuring the callee can spill register values if needed.  Return values can be in $0/1.  The final decision will depend on the actual architecture selected for implementation.
 
 This addendum shows how one might set up a complete frame stack protocol using the PB-1000’s nuances, including the fact that index registers (IX/IZ) are 16-bit and cannot be directly pushed or popped with the 16-bit PHUW/PPUW instructions.
 
@@ -1442,7 +1530,7 @@ The cdecl (C declaration) calling convention is traditionally used for functions
 - The number of arguments is not known to the callee, so it cannot adjust the stack accordingly.
 - This allows functions like printf() to accept a flexible number of parameters.
 
-This section served as a conceptual model showing how you might implement a user-level stack frame on the PB-1000 using IX as the frame pointer. It incorporates all the intricacies of the PB-1000’s assembler—such as the need for 16-bit push/pop operations (PHUW/PPUW) and the use of GRE/PRE for register transfers—that were discussed.
+This section served as a conceptual model showing how you could/might implement a user-level stack frame on the PB-1000 using IX as the frame pointer. It incorporates all the intricacies of the PB-1000’s assembler—such as the need for 16-bit push/pop operations (PHUW/PPUW) and the use of GRE/PRE for register transfers—that were discussed.
 
 ---
 
@@ -1632,6 +1720,8 @@ This program helps to keep BASIC programs easy to follow for quicker debugging p
 Since this is a machine language pro¬gram, very little time is required for the- renumbering procedure.
 Analyze this program to better understand how the HD61700 assembly language works.
 This program has been verified to work and was created by the Casio PB-1000 engineers.
+
+The workflow to use this program (after assembled) is: Perform the [EDIT] operation on the BASIC file, press the [BRK] or BREAK key.  The system will put you in BASIC command line mode and greet you with the classic "Ready" prompt.  Type "CALL RENUM.EXE" and press the [ENTER] key. Completion of the RENUM program execution will be indicated by the cursor returning to the screen.  Use the LIST or EDIT command to confirm that the BASIC program was properly renumbered.
 
 ```assembly
 ORG &H7000

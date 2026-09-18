@@ -568,12 +568,12 @@
 /* ========================================================================= */
 /* Standard Output Terminators for print() function                          */
 /* ========================================================================= */
-enum Terminator { // Single ASCII handled by OUTAC at &h95D7
+enum Terminator { // Single ASCII handled by OUTAC at &H95D7
 	SPACE = 32,  //ASCII Space
     TAB = 9,     // ASCII Horizontal Tab
     LF  = 10,    // ASCII Line Feed
     CR  = 13,     // ASCII Carriage Return
-	CRLF = 23    // Note: CRLF is handled by OUTCR at &h95CE
+	CRLF = 23    // Note: CRLF is handled by OUTCR at &H95CE
 };
 
 #endif /* PB1000_H */

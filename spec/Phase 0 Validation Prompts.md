@@ -251,12 +251,12 @@ Generate two programs: `TEST7.BAS (v2)` (generates `log7.md`) and `TEST7.ASM (v2
 
 ---
 
-**Prompt 8: ROM Call Register Clobber Raw Data Capture (PRLB1 &h9664)**
+**Prompt 8: ROM Call Register Clobber Raw Data Capture (PRLB1 &H9664)**
 
 ```prompt
 Generate two programs: `TEST8.BAS (v3)` (generates `log8.md`) and `TEST8.ASM (v3)` (compiles to `TEST8.EXE`). Use Prompt 1 Reference Example structure/style/methodology/constraints.
 
-**Objective:** Capture initial and final raw register values ($0-$31) AND initial/final Flags register content around a call to the `PRLB1` (&h9664) ROM routine. Use `CALCBUF` for the test string.
+**Objective:** Capture initial and final raw register values ($0-$31) AND initial/final Flags register content around a call to the `PRLB1` (&H9664) ROM routine. Use `CALCBUF` for the test string.
 
 **BASIC Program (`TEST8.BAS v3`):**
 1.  `10 REM ' TEST8.BAS (v3)'`
@@ -272,7 +272,7 @@ Generate two programs: `TEST8.BAS (v3)` (generates `log8.md`) and `TEST8.ASM (v3
 11. `PEEK` final register values from memory `&H7030 - &H704F`. Store in `RFINAL()`.
 12. `FLAGSFINAL = PEEK(&H7050)`.
 13. Open `log8.md` (lowercase) FOR OUTPUT.
-14. `PRINT #1, "# ROM Call Clobber Test: PRLB1 (&h9664)"`
+14. `PRINT #1, "# ROM Call Clobber Test: PRLB1 (&H9664)"`
 15. `PRINT #1, "| Item      | Initial (Dec) | Final (Dec) | Status    |"`
 16. `PRINT #1, "| :-------- | :------------ | :---------- | :-------- |"`
 17. `PRINT #1, "| Flags Reg | "; FLAGSINIT; " | "; FLAGSFINAL; " | ";`
